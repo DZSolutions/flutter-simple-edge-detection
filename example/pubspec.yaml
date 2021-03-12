@@ -12,8 +12,12 @@ dependencies:
   flutter:
     sdk: flutter
   camera: ^0.5.8+5
-  path_provider: ^1.6.14
-  image_picker: ^0.6.7+7
+  path_provider: 
+  image_picker: ^0.6.7+22
+  gallery_saver: ^2.0.3
+  http: ^0.12.0+2
+  firebase_ml_vision: 
+  firebase_core:
 
   simple_edge_detection:
     # When depending on this package from a real application you should use:
@@ -46,6 +50,8 @@ flutter:
   # assets:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
+  assets:
+      - assets/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

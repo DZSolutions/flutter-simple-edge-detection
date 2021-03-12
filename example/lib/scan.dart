@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:simple_edge_detection_example/cropping_preview.dart';
+import 'package:gallery_saver/gallery_saver.dart';
 
 import 'camera_view.dart';
 import 'edge_detector.dart';
@@ -51,9 +52,7 @@ class _ScanState extends State<Scan> {
     }
 
     if (imagePath == null && edgeDetectionResult == null) {
-      return CameraView(
-        controller: controller
-      );
+      return CameraView(controller: controller);
     }
 
     return ImagePreview(
@@ -73,11 +72,8 @@ class _ScanState extends State<Scan> {
       return;
     }
 
-    controller = CameraController(
-        cameras[0],
-        ResolutionPreset.veryHigh,
-        enableAudio: false
-    );
+    controller = CameraController(cameras[0], ResolutionPreset.veryHigh,
+        enableAudio: false);
     controller.initialize().then((_) {
       if (!mounted) {
         return;
@@ -96,41 +92,50 @@ class _ScanState extends State<Scan> {
     if (imagePath != null) {
       return Align(
         alignment: Alignment.bottomCenter,
-        child: FloatingActionButton(
-          child: Icon(Icons.check),
-          onPressed: () {
-            if (croppedImagePath == null) {
-              return _processImage(
-                imagePath, edgeDetectionResult
-              );
-            }
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FloatingActionButton(
+              child: Icon(Icons.check),
+              onPressed: () {
+                if (croppedImagePath == null) {
+                  return _processImage(imagePath, edgeDetectionResult);
+                }
 
-            setState(() {
-              imagePath = null;
-              edgeDetectionResult = null;
-              croppedImagePath = null;
-            });
-          },
+                setState(() {
+                  imagePath = null;
+                  edgeDetectionResult = null;
+                  croppedImagePath = null;
+                });
+              },
+            ),
+            SizedBox(width: 16),
+            FloatingActionButton(
+              foregroundColor: Colors.white,
+              child: Icon(Icons.save),
+              onPressed: () {
+                GallerySaver.saveImage(croppedImagePath);
+                print("save!");
+              },
+            ),
+          ],
         ),
       );
     }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        FloatingActionButton(
-          foregroundColor: Colors.white,
-          child: Icon(Icons.camera_alt),
-          onPressed: onTakePictureButtonPressed,
-        ),
-        SizedBox(width: 16),
-        FloatingActionButton(
-          foregroundColor: Colors.white,
-          child: Icon(Icons.image),
-          onPressed: _onGalleryButtonPressed,
-        ),
-      ]
-    );
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+      FloatingActionButton(
+        foregroundColor: Colors.white,
+        child: Icon(Icons.camera_alt),
+        onPressed: onTakePictureButtonPressed,
+      ),
+      SizedBox(width: 16),
+      FloatingActionButton(
+        foregroundColor: Colors.white,
+        child: Icon(Icons.image),
+        onPressed: _onGalleryButtonPressed,
+      ),
+    ]);
   }
 
   String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
@@ -175,12 +180,14 @@ class _ScanState extends State<Scan> {
     });
   }
 
-  Future _processImage(String filePath, EdgeDetectionResult edgeDetectionResult) async {
+  Future _processImage(
+      String filePath, EdgeDetectionResult edgeDetectionResult) async {
     if (!mounted || filePath == null) {
       return;
     }
 
-    bool result = await EdgeDetector().processImage(filePath, edgeDetectionResult);
+    bool result =
+        await EdgeDetector().processImage(filePath, edgeDetectionResult);
 
     if (result == false) {
       return;
@@ -202,22 +209,19 @@ class _ScanState extends State<Scan> {
   }
 
   void _onGalleryButtonPressed() async {
-    ImagePicker picker = ImagePicker();
-    PickedFile pickedFile = await picker.getImage(source: ImageSource.gallery);
-    final filePath = pickedFile.path;
+    // ImagePicker picker = ImagePicker();
+    // PickedFile pickedFile = await picker.getImage(source: ImageSource.gallery);
+    // final filePath = pickedFile.path;
 
-    log('Picture saved to $filePath');
+    // log('Picture saved to $filePath');
 
-    _detectEdges(filePath);
+    // _detectEdges(filePath);
   }
 
   Padding _getBottomBar() {
     return Padding(
-      padding: EdgeInsets.only(bottom: 32),
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: _getButtonRow()
-      )
-    );
+        padding: EdgeInsets.only(bottom: 32),
+        child:
+            Align(alignment: Alignment.bottomCenter, child: _getButtonRow()));
   }
 }
