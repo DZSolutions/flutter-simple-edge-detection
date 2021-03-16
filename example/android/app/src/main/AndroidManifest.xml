@@ -7,7 +7,7 @@
          FlutterApplication and put your custom class here. -->
     <application
         android:name="io.flutter.app.FlutterApplication"
-        android:label="simple_edge_detection_example"
+        android:label="dz_scanner"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

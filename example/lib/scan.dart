@@ -13,6 +13,9 @@ import 'package:gallery_saver/gallery_saver.dart';
 import 'camera_view.dart';
 import 'edge_detector.dart';
 import 'image_view.dart';
+import 'package:firebase_ml_vision/firebase_ml_vision.dart';
+
+import 'documentdz.dart';
 
 class Scan extends StatefulWidget {
   @override
@@ -25,6 +28,8 @@ class _ScanState extends State<Scan> {
   String imagePath;
   String croppedImagePath;
   EdgeDetectionResult edgeDetectionResult;
+  List<Barcode> _barCode = [];
+  var result = "";
 
   @override
   void initState() {
@@ -43,6 +48,12 @@ class _ScanState extends State<Scan> {
           _getBottomBar(),
         ],
       ),
+      appBar: new AppBar(
+          title: imagePath == null
+              ? Text("โปรดถ่ายใบลงทะเบียน")
+              : croppedImagePath == null
+                  ? Text("ปรับจุดให้ตรงกับกระดาษ")
+                  : Text("โปรดตรวจสอบภาพก่อนส่ง")),
     );
   }
 
@@ -94,12 +105,33 @@ class _ScanState extends State<Scan> {
         alignment: Alignment.bottomCenter,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+          children: <Widget>[
             FloatingActionButton(
+              heroTag: 'check',
               child: Icon(Icons.check),
-              onPressed: () {
+              onPressed: () async {
                 if (croppedImagePath == null) {
                   return _processImage(imagePath, edgeDetectionResult);
+                } else {
+                  // FirebaseVisionImage myImage =
+                  //     FirebaseVisionImage.fromFilePath(croppedImagePath);
+                  // BarcodeDetector barcodeDetector =
+                  //     FirebaseVision.instance.barcodeDetector();
+                  // _barCode = await barcodeDetector.detectInImage(myImage);
+                  // result = "";
+                  // for (Barcode barcode in _barCode) {
+                  //   result = barcode.displayValue;
+                  // }
+                  // showDialog(
+                  //   context: context,
+                  //   builder: (BuildContext context) =>
+                  //       _buildPopupDialog(context),
+                  // );
+
+                  Navigator.of(context).pushReplacement(new MaterialPageRoute(
+                      builder: (BuildContext context) => Result(
+                            valueFromHome: result,
+                          )));
                 }
 
                 setState(() {
@@ -109,15 +141,17 @@ class _ScanState extends State<Scan> {
                 });
               },
             ),
-            SizedBox(width: 16),
-            FloatingActionButton(
-              foregroundColor: Colors.white,
-              child: Icon(Icons.save),
-              onPressed: () {
-                GallerySaver.saveImage(croppedImagePath);
-                print("save!");
-              },
-            ),
+            // croppedImagePath == null ? SizedBox() : SizedBox(width: 16),
+            // croppedImagePath == null
+            //     ? SizedBox()
+            //     : FloatingActionButton(
+            //         foregroundColor: Colors.white,
+            //         child: Icon(Icons.save),
+            //         onPressed: () {
+            //           GallerySaver.saveImage(croppedImagePath);
+            //           print("save!");
+            //         },
+            //       ),
           ],
         ),
       );
@@ -125,17 +159,40 @@ class _ScanState extends State<Scan> {
 
     return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
       FloatingActionButton(
+        heroTag: 'camera',
         foregroundColor: Colors.white,
         child: Icon(Icons.camera_alt),
         onPressed: onTakePictureButtonPressed,
       ),
       SizedBox(width: 16),
       FloatingActionButton(
+        heroTag: 'gallery',
         foregroundColor: Colors.white,
         child: Icon(Icons.image),
         onPressed: _onGalleryButtonPressed,
       ),
     ]);
+  }
+
+  Widget _buildPopupDialog(BuildContext context) {
+    return new AlertDialog(
+      title: const Text('อ่าน QR Code ผิดพลาด'),
+      content: new Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('กรุณาถ่ายภาพใหม่อีกครั้งให้ครอบคลุมทั้งแบบฟอร์ม'),
+        ],
+      ),
+      actions: <Widget>[
+        new TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('โอเค'),
+        ),
+      ],
+    );
   }
 
   String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
@@ -205,17 +262,31 @@ class _ScanState extends State<Scan> {
 
     log('Picture saved to $filePath');
 
-    await _detectEdges(filePath);
+    FirebaseVisionImage myImage = FirebaseVisionImage.fromFilePath(filePath);
+    BarcodeDetector barcodeDetector = FirebaseVision.instance.barcodeDetector();
+    _barCode = await barcodeDetector.detectInImage(myImage);
+    result = "";
+    for (Barcode barcode in _barCode) {
+      result = barcode.displayValue;
+    }
+    if (result.contains('DZCard')) {
+      await _detectEdges(filePath);
+    } else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) => _buildPopupDialog(context),
+      );
+    }
   }
 
   void _onGalleryButtonPressed() async {
-    // ImagePicker picker = ImagePicker();
-    // PickedFile pickedFile = await picker.getImage(source: ImageSource.gallery);
-    // final filePath = pickedFile.path;
+    ImagePicker picker = ImagePicker();
+    PickedFile pickedFile = await picker.getImage(source: ImageSource.gallery);
+    final filePath = pickedFile.path;
 
-    // log('Picture saved to $filePath');
+    log('Picture saved to $filePath');
 
-    // _detectEdges(filePath);
+    _detectEdges(filePath);
   }
 
   Padding _getBottomBar() {
@@ -223,5 +294,76 @@ class _ScanState extends State<Scan> {
         padding: EdgeInsets.only(bottom: 32),
         child:
             Align(alignment: Alignment.bottomCenter, child: _getButtonRow()));
+  }
+}
+
+class Result extends StatefulWidget {
+  final String valueFromHome;
+  Result({Key key, this.valueFromHome}) : super(key: key);
+
+  @override
+  _ResultState createState() => new _ResultState();
+}
+
+class _ResultState extends State<Result> {
+  DocumentDz _dataFromDZ;
+  @override
+  Widget build(BuildContext context) {
+    final List<String> qrData = widget.valueFromHome.split(',');
+
+    _dataFromDZ = DocumentDz(
+        branchId: qrData[0],
+        memberId: qrData[1],
+        docType: qrData[2],
+        ownerId: qrData[3]);
+    // _dataFromDZ.memberId = 100;
+    // _dataFromDZ.docType = 100;
+    // _dataFromDZ.ownerId = 100;
+    return new Scaffold(
+      appBar: new AppBar(title: new Text("ผลลัพธ์")),
+      // body: new Text("${widget.valueFromHome}"));
+      // body: Center(
+      //   child: Text("${widget.valueFromHome}"),
+      // ));
+      body: ListView(
+        children: <Widget>[
+          // ListTile(
+          //   leading: Icon(Icons.qr_code),
+          //   title: Text('QR By'),
+          //   subtitle: Text('${widget.valueFromHome}'),
+          // ),
+          ListTile(
+            leading: Icon(Icons.store),
+            title: Text('บริษัทออกแบบใบลงทะเบียน'),
+            subtitle: Text(_dataFromDZ.branchId),
+          ),
+          // Divider(),
+          // ListTile(
+          //   leading: Icon(Icons.store),
+          //   title: Text('Branch'),
+          //   subtitle: Text('D Z C A R D'),
+          // ),
+          Divider(),
+          ListTile(
+            leading: Icon(Icons.account_circle),
+            title: Text('รหัสลูกค้า'),
+            subtitle: Text(_dataFromDZ.memberId),
+          ),
+          Divider(),
+          ListTile(
+            leading: Icon(Icons.paste_sharp),
+            title: Text('ประเภทของใบสมัคร'),
+            subtitle: Text(_dataFromDZ.docType),
+          ),
+          Divider(),
+          ListTile(
+            leading: Icon(Icons.location_city),
+            title: Text('เจ้าของบริษัท'),
+            subtitle: Text(_dataFromDZ.ownerId),
+          ),
+          Divider(),
+        ],
+      ),
+    );
   }
 }
