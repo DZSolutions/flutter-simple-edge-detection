@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:simple_edge_detection_example/cropping_preview.dart';
 import 'package:gallery_saver/gallery_saver.dart';
+import 'package:cool_alert/cool_alert.dart';
 
 import 'camera_view.dart';
 import 'edge_detector.dart';
@@ -268,13 +269,17 @@ class _ScanState extends State<Scan> {
     result = "";
     for (Barcode barcode in _barCode) {
       result = barcode.displayValue;
+      print("RESULT: " + result);
     }
     if (result.contains('DZCard')) {
       await _detectEdges(filePath);
     } else {
-      showDialog(
+      CoolAlert.show(
         context: context,
-        builder: (BuildContext context) => _buildPopupDialog(context),
+        type: CoolAlertType.error,
+        title: "อ่าน QR Code ผิดพลาด",
+        text: "กรุณาถ่ายภาพใหม่อีกครั้งให้ครอบคลุมทั้งแบบฟอร์ม",
+        confirmBtnText: "ตกลง",
       );
     }
   }
@@ -286,7 +291,28 @@ class _ScanState extends State<Scan> {
 
     log('Picture saved to $filePath');
 
-    _detectEdges(filePath);
+    FirebaseVisionImage myImage = FirebaseVisionImage.fromFilePath(filePath);
+    BarcodeDetector barcodeDetector = FirebaseVision.instance.barcodeDetector();
+    _barCode = await barcodeDetector.detectInImage(myImage);
+    result = "";
+    for (Barcode barcode in _barCode) {
+      result = barcode.displayValue;
+    }
+    if (result.contains('DZCard')) {
+      await _detectEdges(filePath);
+    } else {
+      // showDialog(
+      //   context: context,
+      //   builder: (BuildContext context) => _buildPopupDialog(context),
+      // );
+      CoolAlert.show(
+        context: context,
+        type: CoolAlertType.error,
+        title: "อ่าน QR Code ผิดพลาด",
+        text: "กรุณาถ่ายภาพใหม่อีกครั้งให้ครอบคลุมทั้งแบบฟอร์ม",
+        confirmBtnText: "ตกลง",
+      );
+    }
   }
 
   Padding _getBottomBar() {

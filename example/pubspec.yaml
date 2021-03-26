@@ -18,6 +18,7 @@ dependencies:
   http: ^0.12.0+2
   firebase_ml_vision: 
   firebase_core:
+  cool_alert: ^1.0.3
 
   simple_edge_detection:
     # When depending on this package from a real application you should use:
